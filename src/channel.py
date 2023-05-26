@@ -1,16 +1,17 @@
-import json
-import os
-
 import requests
+import os
 from googleapiclient.discovery import build
+import json
 
 
 class Channel:
     """Класс для ютуб-канала"""
-    api_key: str = os.getenv('YT_API_KEY')
+
+    api_key: str = os.getenv('API_KEY')
 
     def __init__(self, channel_id: str) -> None:
         """Экземпляр инициализируется id канала. Дальше все данные будут подтягиваться по API."""
+
         self.__channel_id = channel_id
         self.service = Channel.get_service()
         self.channel = self.service.channels().list(id=self.__channel_id, part='snippet,statistics').execute()
@@ -23,7 +24,6 @@ class Channel:
 
     def __str__(self):
         return f"{self.title}({self.url}"
-
 
     def __add__(self, other):
         if type(other) == Channel:
@@ -51,9 +51,26 @@ class Channel:
         print(f"Количество подписчиков: {channel_info['subscriberCount']}")
         print(f"ссылка на канал: {channel_info['url']}")
 
-    @classmethod
-    def get_service(cls):
-        return build('youtube', 'v3', developerKey=cls.api_key)
+    def get_channel_info(self) -> dict:
+        """Запрос к API и получение информации о канале в виде словаря."""
+        apikey = os.environ.get('API_KEY')
+        url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={self.channel_id}&key={apikey}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            channel_info = {
+                'id': data['items'][0]['snippet']['id'],
+                'title': data['items'][0]['snippet']['title'],
+                'description': data['items'][0]['snippet']['description'],
+                'video_count': data['items'][0]['snippet']['video_count'],
+                'views_count': data['items'][0]['snippet']['views_count'],
+                'subscriberCount': data['items'][0]['statistics']['subscriberCount'],
+                'url': f'https://www.youtube.com/channel/{self.channel_id}'
+            }
+            return channel_info
+        else:
+            print("Ошибка при запросе к API")
+            return {}
 
     @classmethod
     def get_service(cls):
